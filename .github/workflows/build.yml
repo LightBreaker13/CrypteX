@@ -1,0 +1,37 @@
+name: Build MyOS ISO
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc-multilib binutils grub-pc-bin xorriso
+    
+    - name: Build kernel and ISO
+      run: |
+        make iso
+    
+    - name: Check ISO exists
+      run: |
+        ls -lh myos.iso
+        file myos.iso
+    
+    - name: Upload ISO artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: myos-iso
+        path: myos.iso
+        retention-days: 30
+
