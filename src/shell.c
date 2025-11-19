@@ -6,6 +6,8 @@
 #include "installer.h"
 #include "ledger.h"
 #include "profiles.h"
+#include "blockchain.h"
+#include "fs.h"
 
 #define SHELL_LINES 8
 #define SHELL_WIDTH 64
@@ -53,7 +55,7 @@ static void cmd_echo(const char *args) {
 }
 
 static void cmd_help(void) {
-    log_event(LOG_SUCCESS, "Commands: HELP ECHO SYSMON CONSOLE INSTALL JOURNAL CHECKPOINT");
+    log_event(LOG_SUCCESS, "Commands: HELP ECHO SYSMON CONSOLE INSTALL JOURNAL CHECKPOINT VERIFY CHAIN BCSTATUS");
 }
 
 static void cmd_sysmon(void) {
@@ -83,6 +85,49 @@ static void cmd_checkpoint(const char *note) {
     jnl_checkpoint(note);
 }
 
+static void cmd_verify(const char *path) {
+    if (!path || !*path) {
+        log_event(LOG_WARN, "Usage: VERIFY <filepath>");
+        return;
+    }
+    int result = fs_verify_file(path);
+    if (result == 0) {
+        log_event(LOG_SUCCESS, "File blockchain verified");
+    } else {
+        log_event(LOG_ERROR, "File blockchain verification failed");
+    }
+}
+
+static void cmd_chain(const char *path) {
+    if (!path || !*path) {
+        log_event(LOG_WARN, "Usage: CHAIN <filepath>");
+        return;
+    }
+    file_type_t type = blockchain_is_system_file(path) ? FILE_TYPE_SYSTEM : FILE_TYPE_USER;
+    file_blockchain_t* chain = blockchain_get_file(path, type);
+    if (!chain) {
+        log_event(LOG_WARN, "File not found in blockchain");
+        return;
+    }
+    file_block_t* latest = blockchain_get_latest(chain);
+    if (latest) {
+        char msg[128];
+        kstrncpy(msg, "Blocks: ", sizeof(msg) - 1);
+        char num[32];
+        kitoa((int)chain->block_count, num, sizeof(num));
+        kstrcat(msg, num, sizeof(msg));
+        log_event(LOG_SUCCESS, msg);
+    } else {
+        log_event(LOG_WARN, "No blocks in chain");
+    }
+}
+
+static void cmd_bcstatus(void) {
+    log_event(LOG_SUCCESS, "Blockchain system: Active");
+    log_event(LOG_SUCCESS, "System files: Shared blockchain");
+    log_event(LOG_SUCCESS, "User files: Individual blockchains");
+}
+
 static void execute_command(const char *line) {
     if (!kstrlen(line)) {
         return;
@@ -104,6 +149,12 @@ static void execute_command(const char *line) {
         const char *note = line + 10;
         while (*note == ' ') note++;
         cmd_checkpoint(note);
+    } else if (!kstrncmp(line, "VERIFY ", 7)) {
+        cmd_verify(line + 7);
+    } else if (!kstrncmp(line, "CHAIN ", 6)) {
+        cmd_chain(line + 6);
+    } else if (!kstrcmp(line, "BCSTATUS")) {
+        cmd_bcstatus();
     } else {
         log_event(LOG_WARN, "Unknown command");
     }

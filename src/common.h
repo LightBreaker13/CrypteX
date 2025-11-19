@@ -20,6 +20,19 @@ static inline void kmemcpy(void *dst, const void *src, size_t count) {
     }
 }
 
+static inline int kmemcmp(const void *a, const void *b, size_t count) {
+    const uint8_t *pa = (const uint8_t *)a;
+    const uint8_t *pb = (const uint8_t *)b;
+    while (count--) {
+        if (*pa != *pb) {
+            return (int)((unsigned char)*pa) - (int)((unsigned char)*pb);
+        }
+        pa++;
+        pb++;
+    }
+    return 0;
+}
+
 static inline size_t kstrlen(const char *s) {
     size_t len = 0;
     if (!s) {

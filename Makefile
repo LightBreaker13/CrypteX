@@ -24,6 +24,7 @@ SRCS := \
   src/ledger.c \
   src/crypto.c \
   src/fs.c \
+  src/blockchain.c \
   src/raid.c \
   src/compat_win.c \
   src/anim.c \
