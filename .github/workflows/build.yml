@@ -17,7 +17,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y gcc-multilib binutils grub-pc-bin xorriso
+        sudo apt-get install -y gcc-multilib binutils grub-pc-bin xorriso mtools
     
     - name: Build kernel and ISO
       run: |

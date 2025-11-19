@@ -122,7 +122,6 @@ void installer_render(void) {
         return;
     }
     int w = fb_width();
-    int h = fb_height();
     fb_fillrect(32, 200, w - 64, 200, 0x00222222);
     fb_draw_text(40, 208, "Installer", 0x00FFFFFF, 0);
     switch (step) {
