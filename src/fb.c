@@ -41,6 +41,11 @@ void fb_init(void *mb2) {
 
     while (tag_ptr < end) {
         mb2_tag_t *tag = (mb2_tag_t *)tag_ptr;
+        
+        if (tag->type == 0 && tag->size == 8) {
+            break;
+        }
+        
         if (tag->type == 8) {
             mb2_tag_fb_t *fb_tag = (mb2_tag_fb_t *)tag;
             fb.addr = (uint8_t *)(uintptr_t)fb_tag->addr;
@@ -50,9 +55,11 @@ void fb_init(void *mb2) {
             fb.bpp = fb_tag->bpp;
             break;
         }
-        if (tag->size == 0) {
+        
+        if (tag->size == 0 || tag->size < 8) {
             break;
         }
+        
         tag_ptr += (tag->size + 7) & ~7;
     }
 
