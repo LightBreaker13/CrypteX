@@ -8,6 +8,7 @@
 #include "profiles.h"
 #include "blockchain.h"
 #include "fs.h"
+#include <stdint.h>
 
 #define SHELL_LINES 8
 #define SHELL_WIDTH 64
@@ -55,7 +56,7 @@ static void cmd_echo(const char *args) {
 }
 
 static void cmd_help(void) {
-    log_event(LOG_SUCCESS, "Commands: HELP ECHO SYSMON CONSOLE INSTALL JOURNAL CHECKPOINT VERIFY CHAIN BCSTATUS");
+    log_event(LOG_SUCCESS, "Commands: HELP ECHO SYSMON CONSOLE INSTALL JOURNAL CHECKPOINT VERIFY CHAIN BCSTATUS RECOVER");
 }
 
 static void cmd_sysmon(void) {
@@ -124,8 +125,61 @@ static void cmd_chain(const char *path) {
 
 static void cmd_bcstatus(void) {
     log_event(LOG_SUCCESS, "Blockchain system: Active");
-    log_event(LOG_SUCCESS, "System files: Shared blockchain");
+    log_event(LOG_SUCCESS, "System files: Shared blockchain with redundancy");
     log_event(LOG_SUCCESS, "User files: Individual blockchains");
+}
+
+static void cmd_recover(const char *args) {
+    if (!args || !*args) {
+        log_event(LOG_WARN, "Usage: RECOVER <path> <block> <complete_block> <partial_block> <shard>");
+        return;
+    }
+    
+    char path[256];
+    uint32_t block_idx = 0, complete_idx = 0, partial_idx = 0, shard_idx = 0;
+    
+    int parsed = 0;
+    const char *p = args;
+    size_t path_len = 0;
+    
+    while (*p && *p != ' ' && path_len < sizeof(path) - 1) {
+        path[path_len++] = *p++;
+    }
+    path[path_len] = '\0';
+    
+    while (*p == ' ') p++;
+    
+    char num_buf[32];
+    int num_idx = 0;
+    
+    for (int i = 0; i < 4 && *p; ++i) {
+        num_idx = 0;
+        while (*p && *p != ' ' && num_idx < sizeof(num_buf) - 1) {
+            if (kisdigit(*p)) {
+                num_buf[num_idx++] = *p;
+            }
+            p++;
+        }
+        num_buf[num_idx] = '\0';
+        while (*p == ' ') p++;
+        
+        uint32_t val = 0;
+        for (int j = 0; j < num_idx; ++j) {
+            val = val * 10 + (num_buf[j] - '0');
+        }
+        
+        if (i == 0) block_idx = val;
+        else if (i == 1) complete_idx = val;
+        else if (i == 2) partial_idx = val;
+        else if (i == 3) shard_idx = val;
+    }
+    
+    int result = fs_recover_block(path, block_idx, complete_idx, partial_idx, shard_idx);
+    if (result == 0) {
+        log_event(LOG_SUCCESS, "Block recovered successfully");
+    } else {
+        log_event(LOG_ERROR, "Block recovery failed");
+    }
 }
 
 static void execute_command(const char *line) {
@@ -155,6 +209,8 @@ static void execute_command(const char *line) {
         cmd_chain(line + 6);
     } else if (!kstrcmp(line, "BCSTATUS")) {
         cmd_bcstatus();
+    } else if (!kstrncmp(line, "RECOVER ", 8)) {
+        cmd_recover(line + 8);
     } else {
         log_event(LOG_WARN, "Unknown command");
     }

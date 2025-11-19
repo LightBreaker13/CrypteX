@@ -5,11 +5,19 @@
 #define BLOCKCHAIN_MAX_BLOCKS 1024
 #define BLOCKCHAIN_MAX_FILES 256
 #define FILE_PATH_MAX 256
+#define BLOCK_SHARD_SIZE 64
+#define BLOCK_SHARDS_PER_BLOCK 2
 
 typedef enum {
     FILE_TYPE_SYSTEM = 0,
     FILE_TYPE_USER = 1
 } file_type_t;
+
+typedef struct {
+    uint8_t data[BLOCK_SHARD_SIZE];
+    uint8_t shard_hash[32];
+    uint8_t parity[BLOCK_SHARD_SIZE];
+} block_shard_t;
 
 typedef struct {
     uint32_t block_index;
@@ -20,6 +28,9 @@ typedef struct {
     uint32_t operation;  // 0=create, 1=modify, 2=delete, 3=metadata
     uint8_t metadata_hash[32];
     uint8_t block_hash[32];
+    // Redundancy data for system files
+    block_shard_t shards[BLOCK_SHARDS_PER_BLOCK];
+    uint8_t has_redundancy;
 } file_block_t;
 
 typedef struct {
@@ -57,4 +68,10 @@ int blockchain_is_system_file(const char* path);
 
 // Recover file from blockchain
 int blockchain_recover_file(file_blockchain_t* chain, uint8_t* out_data, uint32_t* out_size);
+
+// Redundancy and recovery functions (for system files)
+int blockchain_add_redundancy(file_blockchain_t* chain, uint32_t block_idx, const uint8_t* file_data, uint32_t file_size);
+int blockchain_recover_block_from_redundancy(file_blockchain_t* chain, uint32_t block_idx,
+                                            uint32_t complete_block_idx, uint32_t partial_block_idx, uint32_t partial_shard_idx);
+int blockchain_verify_redundancy(file_blockchain_t* chain, uint32_t block_idx);
 
